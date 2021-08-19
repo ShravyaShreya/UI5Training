@@ -1,0 +1,94 @@
+_schema-version: "3.2"
+ID: gitdemoapp
+description: A Fiori application.
+version: 0.0.1
+modules:
+- name: gitdemoapp-dest-content
+  type: com.sap.application.content
+  requires:
+  - name: gitdemoapp-dest-srv
+    parameters:
+      content-target: true
+  - name: gitdemoapp-repo-host
+    parameters:
+      service-key:
+        name: gitdemoapp-repo-host-key
+  - name: gitdemoapp-uaa
+    parameters:
+      service-key:
+        name: gitdemoapp-uaa-key
+  parameters:
+    content:
+      instance:
+        destinations:
+        - Name: gitdemoapp_repo_host
+          ServiceInstanceName: gitdemoapp-html5-srv
+          ServiceKeyName: gitdemoapp-repo-host-key
+          sap.cloud.service: gitdemoapp
+        - Authentication: OAuth2UserTokenExchange
+          Name: gitdemoapp_uaa
+          ServiceInstanceName: gitdemoapp-xsuaa-srv
+          ServiceKeyName: gitdemoapp-uaa-key
+          sap.cloud.service: gitdemoapp
+        existing_destinations_policy: ignore
+  build-parameters:
+    no-source: true
+- name: gitdemoapp-app-content
+  type: com.sap.application.content
+  path: .
+  requires:
+  - name: gitdemoapp-repo-host
+    parameters:
+      content-target: true
+  build-parameters:
+    build-result: resources
+    requires:
+    - artifacts:
+      - gitdemoapp.zip
+      name: gitdemoapp
+      target-path: resources/
+- name: gitdemoapp
+  type: html5
+  path: .
+  build-parameters:
+    build-result: dist
+    builder: custom
+    commands:
+    - npm install
+    - npm run build:cf
+    supported-platforms: []
+resources:
+- name: gitdemoapp-dest-srv
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      init_data:
+        instance:
+          destinations:
+          - Authentication: NoAuthentication
+            Name: ui5
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://ui5.sap.com
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: gitdemoapp-dest-srv
+    service-plan: lite
+- name: gitdemoapp-uaa
+  type: org.cloudfoundry.managed-service
+  parameters:
+    path: ./xs-security.json
+    service: xsuaa
+    service-name: gitdemoapp-xsuaa-srv
+    service-plan: application
+- name: gitdemoapp-repo-host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: gitdemoapp-html5-srv
+    service-plan: app-host
+parameters:
+  deploy_mode: html5-repo
+  enable-parallel-deployments: true
